@@ -1,14 +1,28 @@
+import { db } from '../db';
+import { todosTable } from '../db/schema';
+import { eq, sql } from 'drizzle-orm';
 import { type UpdateTodoCompletionInput, type Todo } from '../schema';
 
-export async function updateTodoCompletion(input: UpdateTodoCompletionInput): Promise<Todo> {
-    // This is a placeholder declaration! Real code should be implemented here.
-    // The goal of this handler is updating the completion status of a specific todo item.
-    return Promise.resolve({
-        id: input.id,
-        title: "Sample Todo", // Placeholder
-        description: null,
+export const updateTodoCompletion = async (input: UpdateTodoCompletionInput): Promise<Todo> => {
+  try {
+    // Update the todo with new completion status and updated timestamp
+    const result = await db.update(todosTable)
+      .set({ 
         completed: input.completed,
-        created_at: new Date(),
-        updated_at: new Date()
-    } as Todo);
-}
+        updated_at: sql`NOW()` // Use SQL NOW() for accurate server timestamp
+      })
+      .where(eq(todosTable.id, input.id))
+      .returning()
+      .execute();
+
+    // Check if todo was found and updated
+    if (result.length === 0) {
+      throw new Error(`Todo with id ${input.id} not found`);
+    }
+
+    return result[0];
+  } catch (error) {
+    console.error('Todo completion update failed:', error);
+    throw error;
+  }
+};
